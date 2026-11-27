@@ -9,7 +9,8 @@ import ipaddr from "ipaddr.js";
 export const runtime = "nodejs";
 export const maxDuration = 45;
 
-const CHROMIUM_PACK_URL = "https://github.com/Sparticuz/chromium/releases/download/v158.0.0/chromium-v158.0.0-pack.tar";
+const chromiumArch = process.arch === "arm64" ? "arm64" : "x64";
+const CHROMIUM_PACK_URL = `https://github.com/Sparticuz/chromium/releases/download/v158.0.0/chromium-v158.0.0-pack.${chromiumArch}.tar`;
 const MAX_REQUESTS = 100;
 const MAX_IMAGE_BYTES = 1_500_000;
 const rateBuckets = new Map<string, { start: number; count: number }>();
