@@ -64,6 +64,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ detail: "Preview limit reached. Please wait a minute before trying again." }, { status: 429, headers: { "Retry-After": "60" } });
   }
 
+  let stage = "request validation";
   let browser: Browser | undefined;
   try {
     const body = await request.json();
@@ -88,6 +89,7 @@ export async function POST(request: NextRequest) {
     if (!isVercel && !localExecutable) {
       return NextResponse.json({ detail: "Preview needs Chrome locally. Install Chrome or set CHROME_PATH to Chrome or Brave." }, { status: 503 });
     }
+    stage = "starting temporary browser";
     const executablePath = isVercel ? await chromium.executablePath(CHROMIUM_PACK_URL) : localExecutable!;
     browser = await puppeteer.launch({
       args: isVercel ? chromium.args : ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
@@ -125,13 +127,15 @@ export async function POST(request: NextRequest) {
       })().catch(() => outgoing.abort().catch(() => undefined));
     });
 
+    stage = "loading website";
     try {
       await page.goto(initialUrl, { waitUntil: "domcontentloaded", timeout: 12_000 });
     } catch {
       // Some sites keep loading; capture the rendered page if the navigation timeout expires.
     }
     await new Promise((resolve) => setTimeout(resolve, 700));
-    const image = await page.screenshot({ type: "jpeg", quality: 70, fullPage: false });
+    stage = "capturing screenshot";
+    const image = await page.screenshot({ type: "jpeg", quality: 65, fullPage: false });
     if (image.byteLength > MAX_IMAGE_BYTES) {
       return NextResponse.json({ detail: "Preview image was too large." }, { status: 502 });
     }
@@ -140,6 +144,10 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "A preview could not be captured.";
+    console.error("[preview] capture failed", {
+      stage,
+      errorName: error instanceof Error ? error.name : "UnknownError",
+    });
     const status = /private|local|public|standard web|invalid website|only public/i.test(message) ? 422 : 503;
     return NextResponse.json({ detail: status === 422 ? message : "Preview unavailable. Your scan report is still ready." }, { status });
   } finally {

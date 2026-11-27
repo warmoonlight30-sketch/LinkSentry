@@ -7,6 +7,7 @@ from time import monotonic
 import base64
 import ipaddress
 import json
+import logging
 import os
 from pathlib import Path
 import re
@@ -22,6 +23,9 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+
+# Avoid logging full outbound URLs, which can contain API keys.
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 load_dotenv()
 
